@@ -1,0 +1,95 @@
+"""
+DMBI Experiment 04
+Bank Customer Churn System
+Classification using Decision Tree and Naive Bayes
+
+This Python program implements an equivalent classification workflow
+to the Altair AI Studio / RapidMiner experiment.
+
+Input CSV: Churn_Modelling.csv
+Target: Exited (0 = Stayed, 1 = Exited)
+Split: 80% training, 20% testing
+"""
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    confusion_matrix,
+    classification_report
+)
+
+# ------------------------------------------------------------
+# STEP 1: LOAD THE BANK CUSTOMER CHURN SYSTEM DATASET
+# ------------------------------------------------------------
+df = pd.read_csv("Churn_Modelling.csv")
+
+print("Dataset Shape:", df.shape)
+print("\nFirst Five Records:")
+print(df.head())
+print("\nDataset Information:")
+df.info()
+print("\nMissing Values:")
+print(df.isnull().sum())
+
+# ------------------------------------------------------------
+# STEP 2: SELECT ATTRIBUTES
+# Remove identifier columns which are not useful predictors.
+# ------------------------------------------------------------
+identifier_columns = [
+    col for col in ["RowNumber", "CustomerId", "Surname"]
+    if col in df.columns
+]
+df = df.drop(columns=identifier_columns)
+
+# Verify target attribute
+if "Exited" not in df.columns:
+    raise ValueError(
+        "Target column 'Exited' was not found. "
+        "Check the column names in Churn_Modelling.csv."
+    )
+
+# Remove records where the target value is missing
+df = df.dropna(subset=["Exited"]).copy()
+
+# ------------------------------------------------------------
+# STEP 3: PREPARE THE LABEL (EXITED)
+# 0 = Customer stayed, 1 = Customer exited.
+# ------------------------------------------------------------
+y = df["Exited"].astype(int)
+X = df.drop(columns=["Exited"])
+
+# Identify categorical and numerical predictor columns
+categorical_columns = X.select_dtypes(
+    include=["object", "category", "bool"]
+).columns.tolist()
+
+numerical_columns = X.select_dtypes(
+    include=["number"]
+).columns.tolist()
+
+# ------------------------------------------------------------
+# STEP 4: PREPROCESS INPUT ATTRIBUTES
+# Fill missing numerical values with median.
+# Fill missing categorical values with most frequent value.
+# Convert categorical values into numerical indicator columns.
+# ------------------------------------------------------------
+numeric_preprocessing = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="median"))
+])
+
+categorical_preprocessing = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("onehot", OneHotEncoder(
+        handle_unknown="ignore",
+        sparse_output=False
+    ))
+])
